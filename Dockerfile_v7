@@ -1,0 +1,18 @@
+FROM python:3.9.6
+
+ARG UID=1000
+ARG GID=1000
+
+RUN pip3 install pipenv \
+    && export LC_ALL=C.UTF-8 && export LANG=C.UTF-8
+
+RUN pip3 install pandas && pip3 install psycopg2-binary && pip3 install parameterized && pip3 install click && \
+    pip3 install pybuilder && pip3 install mockito && pip3 install pyyaml && pip3 install overrides && \
+    pip3 install python-dateutil && pip3 install pytz && pip3 install six && pip3 install typing-utils
+
+RUN groupadd -g "${GID}" python \
+  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" python
+
+USER python
+
+CMD ["python"]
