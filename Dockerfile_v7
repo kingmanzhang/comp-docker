@@ -1,20 +1,36 @@
-FROM python:3.9.6
+ARG PYTHON_VERSION=3.9.6
 
+FROM python:$PYTHON_VERSION
+
+# optional arguments at buildtime
+# use --build-arg to overwrite the default values
+# e.g. docker build --build-arg UID=$(id -u) --build-arg GID=$(id -g) --build-arg USERNAME=$(whoami) ...
 ARG UID=1000
 ARG GID=1000
+ARG USERNAME=python
 
-RUN pip3 install pipenv \
-    && export LC_ALL=C.UTF-8 && export LANG=C.UTF-8
+RUN pip install pipenv && export LC_ALL=C.UTF-8 && export LANG=C.UTF-8
 
-RUN pip3 install pandas && pip3 install psycopg2-binary && pip3 install parameterized && pip3 install click && \
-    pip3 install pybuilder && pip3 install mockito && pip3 install pyyaml && pip3 install overrides && \
-    pip3 install python-dateutil && pip3 install pytz && pip3 install six && pip3 install typing-utils
+# install some default packages
+RUN pip install pandas psycopg2-binary parameterized click pybuilder mockito pyyaml overrides \
+    python-dateutil pytz six typing-utils
 
-RUN groupadd -g "${GID}" python \
-  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" python
+# create specified user and group
+# do a few conditional checks:
+# if group with the group name of USERNAME exists, delete it
+# if group with the GUD exists, delete it
+# if user with the user name of USERNAME exists, delete it (and its home directory)
+# if user with the UID exists, delete it (and its home directory)
+RUN if getent group $GID; then groupdel -f $(getent group $GID | cut -d : -f 1); fi && \
+  if getent group $USERNAME; then groupdel -f $USERNAME; fi && \
+  if getent passwd $UID; then userdel -r $(getent passwd 1000 | cut -d : -f 1); fi && \
+  if getent passwd $USERNAME; then userdel $USERNAME; fi && \
+  groupadd -g "${GID}" $USERNAME && \
+  useradd --create-home --no-log-init -u "${UID}" -g "${GID}" $USERNAME
 
 # https://github.com/boxboat/fixuid
 # I disabled this section as one can change uid and git by the -u UID:GID flag at runtime.
+# Look it up if needed
 # RUN USER=python && \
 #    GROUP=python && \
 #    curl -SsL https://github.com/boxboat/fixuid/releases/download/v0.5.1/fixuid-0.5.1-linux-amd64.tar.gz | tar -C /usr/local/bin -xzf - && \
@@ -27,6 +43,8 @@ RUN groupadd -g "${GID}" python \
 
 # ENTRYPOINT ["fixuid"]
 
-USER python
+USER $USERNAME
+
+WORKDIR /home/$USERNAME
 
 CMD ["python"]
